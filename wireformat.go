@@ -30,25 +30,25 @@ const (
 
 //PxsMsgHeader of all pxs msg
 type PxsMsgHeader struct {
-	Len uint32     //msg length
-	Typ PxsMsgType //msg type ID: 0a,1a,1b,2a,2b,3a,0b
-	Iid uint32     //instance ID or Sequence num of request.
+	siz uint32     //msg length
+	typ PxsMsgType //msg type ID: 0a,1a,1b,2a,2b,3a,0b
+	iid uint32     //instance ID or Sequence num of request.
 }
 
-//Value : Client value, size < 64K
+//Value : Client Value, size < 64K
 type Value struct {
-	Siz uint32 //0: Value is none.
-	Oct []byte //if oct == nil, then val == num;
+	siz uint32 //0: Value is none.
+	oct []byte //if oct == nil, then val == num;
 }
 
-//Size : len of bytes
-func (v Value) Size() uint32 {
-	return uint32(len(v.Oct))
+//size : len of bytes
+func (v Value) size() uint32 {
+	return uint32(len(v.oct))
 }
 
 //IsNone : v is a None Value.
 func (v Value) IsNone() bool {
-	if v.Siz == 0 || len(v.Oct) == 0 {
+	if v.siz == 0 || len(v.oct) == 0 {
 		return true
 	}
 	return false
@@ -58,19 +58,19 @@ func (v Value) IsNone() bool {
 
 //PxsMsgRequest :
 type PxsMsgRequest struct {
-	Hdr PxsMsgHeader // hdr.type = PxsMsgTypeRequest, hdr.iid as seq num of value;
-	Val Value
+	hdr PxsMsgHeader // hdr.type = PxsMsgTypeRequest, hdr.iid as seq num of Value;
+	val Value
 }
 
 //NewPxsMsgRequest :  new msg
 func NewPxsMsgRequest(seq uint32, val *Value) *PxsMsgRequest {
 	m := new(PxsMsgRequest)
-	m.Hdr = PxsMsgHeader{
-		Len: 4 + val.Size(), //Val.Siz + Val.Oct
-		Iid: seq,
-		Typ: PxsMsgTypeRequest,
+	m.hdr = PxsMsgHeader{
+		siz: 4 + val.size(), //val.siz + val.oct
+		iid: seq,
+		typ: PxsMsgTypeRequest,
 	}
-	m.Val = *val
+	m.val = *val
 	return m
 }
 
@@ -102,23 +102,23 @@ func deserialize(flds []interface{}, r io.Reader) error {
 //Encode : struct to bytes
 func (m PxsMsgRequest) Encode() ([]byte, error) {
 	var data = []interface{}{
-		m.Hdr, m.Val.Siz, m.Val.Oct,
+		m.hdr, m.val.siz, m.val.oct,
 	}
 	return serialize(data)
 }
 
 //PxsMsgResponse : P0b msg
 type PxsMsgResponse struct {
-	Hdr PxsMsgHeader // hdr.type = PxsMsgResponse, hdr.iid as seq num of value;
-	Ret uint32       // return code; OK or TIMEOUT;
+	hdr PxsMsgHeader // hdr.type = PxsMsgResponse, hdr.iid as seq num of Value;
+	ret uint32       // return code; OK or TIMEOUT;
 }
 
 //NewPxsMsgResponse :
 func NewPxsMsgResponse(iid, ret uint32) *PxsMsgResponse {
 	m := new(PxsMsgResponse)
-	m.Ret = ret
-	m.Hdr = PxsMsgHeader{
-		Len: 4, Typ: PxsMsgTypeResponse, Iid: iid,
+	m.ret = ret
+	m.hdr = PxsMsgHeader{
+		siz: 4, typ: PxsMsgTypeResponse, iid: iid,
 	}
 	return m
 }
@@ -126,36 +126,36 @@ func NewPxsMsgResponse(iid, ret uint32) *PxsMsgResponse {
 //Encode : struct to bytes
 func (m PxsMsgResponse) Encode() ([]byte, error) {
 	var data = []interface{}{
-		m.Hdr, //header
-		m.Ret,
+		m.hdr, //header
+		m.ret,
 	}
 	return serialize(data)
 }
 
 //PxsMsgPrepare :
 type PxsMsgPrepare struct {
-	Hdr PxsMsgHeader
-	Bal uint32
+	hdr PxsMsgHeader
+	bal uint32
 }
 
-//InvalidBallot : None value;
-const InvalidBallot = uint32(0xFFFFFFFF)
+//Invalidballot : None Value;
+const Invalidballot = uint32(0xFFFFFFFF)
 
 //NewPxsMsgPrepare :
 func NewPxsMsgPrepare(iid, bal uint32) *PxsMsgPrepare {
 	m := new(PxsMsgPrepare)
-	m.Hdr = PxsMsgHeader{
-		Len: 4, Iid: iid, Typ: PxsMsgTypePrepare,
+	m.hdr = PxsMsgHeader{
+		siz: 4, iid: iid, typ: PxsMsgTypePrepare,
 	}
-	m.Bal = bal
+	m.bal = bal
 	return m
 }
 
 //Encode : struct to bytes
 func (m PxsMsgPrepare) Encode() ([]byte, error) {
 	var data = []interface{}{
-		m.Hdr, //header
-		m.Bal,
+		m.hdr, //header
+		m.bal,
 	}
 	return serialize(data)
 }
@@ -164,23 +164,23 @@ func (m PxsMsgPrepare) Encode() ([]byte, error) {
 type PxsMsgPromise struct {
 	hdr   PxsMsgHeader
 	acc   uint32 //acceptor ID;
-	bal   uint32 //bal > mBal;
-	mVBal uint32 //voted ballot: if mBal != InvalidBallot then mVal is an old value;
-	mVal  Value  //voted value: old value replied;
+	bal   uint32 //bal > mbal;
+	mVbal uint32 //voted ballot: if mbal != Invalidballot then mval is an old Value;
+	mval  Value  //voted Value: old Value replied;
 }
 
 //NewPxsMsgPromise :
-func NewPxsMsgPromise(iid, acc, bal, mVBal uint32, val *Value) *PxsMsgPromise {
+func NewPxsMsgPromise(iid, acc, bal, mVbal uint32, val *Value) *PxsMsgPromise {
 	m := new(PxsMsgPromise)
 	m.hdr = PxsMsgHeader{
-		Len: 4*4 + val.Siz, //acc,bal,mvbal, siz, oct
-		Typ: PxsMsgTypePromise,
-		Iid: iid,
+		siz: 4*4 + val.siz, //acc,bal,mvbal, siz, oct
+		typ: PxsMsgTypePromise,
+		iid: iid,
 	}
 	m.acc = acc
 	m.bal = bal
-	m.mVBal = mVBal
-	m.mVal = *val
+	m.mVbal = mVbal
+	m.mval = *val
 	return m
 }
 
@@ -188,16 +188,16 @@ func NewPxsMsgPromise(iid, acc, bal, mVBal uint32, val *Value) *PxsMsgPromise {
 func (m PxsMsgPromise) Encode() ([]byte, error) {
 	var data = []interface{}{
 		m.hdr, //header
-		m.acc, m.bal, m.mVBal,
-		m.mVal.Siz, m.mVal.Oct,
+		m.acc, m.bal, m.mVbal,
+		m.mval.siz, m.mval.oct,
 	}
 	return serialize(data)
 }
 
 //acceptors state:
-//maxBal[a]  : promised ballot
-//maxVBal[a] : accepted ballot
-//maxVal[a]  : accepted value
+//maxbal[a]  : promised ballot
+//maxVbal[a] : accepted ballot
+//maxval[a]  : accepted Value
 
 //PxsMsgAccept :
 type PxsMsgAccept struct {
@@ -212,9 +212,9 @@ func NewPxsMsgAccept(iid, bal uint32, val *Value) *PxsMsgAccept {
 	m.bal = bal
 	m.val = *val
 	m.hdr = PxsMsgHeader{
-		Len: 4 + 4 + m.val.Siz, //bal,val.Siz,val.Oct
-		Typ: PxsMsgTypeAccept,
-		Iid: iid,
+		siz: 4 + 4 + m.val.siz, //bal,val.siz,val.oct
+		typ: PxsMsgTypeAccept,
+		iid: iid,
 	}
 	return m
 }
@@ -223,7 +223,7 @@ func NewPxsMsgAccept(iid, bal uint32, val *Value) *PxsMsgAccept {
 func (m PxsMsgAccept) Encode() (bs []byte, err error) {
 	var data = []interface{}{
 		m.hdr, //header
-		m.bal, m.val.Siz, m.val.Oct,
+		m.bal, m.val.siz, m.val.oct,
 	}
 	return serialize(data)
 }
@@ -241,9 +241,9 @@ func NewPxsMsgAccepted(iid, acc, bal uint32, val *Value) *PxsMsgAccepted {
 	m := new(PxsMsgAccepted)
 	m.acc, m.bal, m.val = acc, bal, *val
 	m.hdr = PxsMsgHeader{
-		Len: 4*3 + m.val.Siz, //acc,bal,val.Siz, val.Oct
-		Typ: PxsMsgTypeAccepted,
-		Iid: iid,
+		siz: 4*3 + m.val.siz, //acc,bal,val.siz, val.oct
+		typ: PxsMsgTypeAccepted,
+		iid: iid,
 	}
 	return m
 }
@@ -252,8 +252,8 @@ func NewPxsMsgAccepted(iid, acc, bal uint32, val *Value) *PxsMsgAccepted {
 func (m PxsMsgAccepted) Encode() ([]byte, error) {
 	var data = []interface{}{
 		m.hdr, //header
-		m.acc, m.bal, m.val.Siz,
-		m.val.Oct,
+		m.acc, m.bal, m.val.siz,
+		m.val.oct,
 	}
 	return serialize(data)
 }
@@ -269,7 +269,7 @@ func NewPxsMsgCommit(iid, bal uint32) *PxsMsgCommit {
 	m := new(PxsMsgCommit)
 	m.bal = bal
 	m.hdr = PxsMsgHeader{
-		Len: 4, Typ: PxsMsgTypeCommit, Iid: iid,
+		siz: 4, typ: PxsMsgTypeCommit, iid: iid,
 	}
 	return m
 }
@@ -288,52 +288,55 @@ func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
 	rd := bytes.NewReader(bs)
 	//1. header
 	hdr := new(PxsMsgHeader)
-	if err := binary.Read(rd, binary.LittleEndian, hdr); err != nil {
+	flds := []interface{}{
+		&hdr.siz, &hdr.typ, &hdr.iid,
+	}
+	if err = deserialize(flds, rd); err != nil {
 		goto WRONG_MSG_FORMAT
 	}
 	//2. parse all type of msg
-	switch hdr.Typ {
+	switch hdr.typ {
 	case PxsMsgTypeRequest:
 		req := new(PxsMsgRequest)
-		req.Hdr = *hdr
+		req.hdr = *hdr
 		//size
-		if err = binary.Read(rd, binary.LittleEndian, &req.Val.Siz); err != nil {
+		if err = binary.Read(rd, binary.LittleEndian, &req.val.siz); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
-		if req.Val.Siz == 0 { // should not be 0 length
+		if req.val.siz == 0 { // should not be 0 length
 			goto WRONG_MSG_FORMAT
 		}
 		//octet
-		req.Val.Oct = make([]byte, req.Val.Siz) //XXX should be fixed size array
-		if err = binary.Read(rd, binary.LittleEndian, &req.Val.Oct); err != nil {
+		req.val.oct = make([]byte, req.val.siz) //XXX should be fixed size array
+		if err = binary.Read(rd, binary.LittleEndian, &req.val.oct); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
 		msg = req
 	case PxsMsgTypePrepare:
 		pre := new(PxsMsgPrepare)
-		pre.Hdr = *hdr
+		pre.hdr = *hdr
 		//bal
-		if err = binary.Read(rd, binary.LittleEndian, &pre.Bal); err != nil {
+		if err = binary.Read(rd, binary.LittleEndian, &pre.bal); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
 		msg = pre
 	case PxsMsgTypePromise:
 		pro := new(PxsMsgPromise)
 		pro.hdr = *hdr
-		//acc,bal,mVBal,mVal.Siz
+		//acc,bal,mVbal,mval.siz
 		flds := []interface{}{
-			&pro.acc, &pro.bal, &pro.mVBal,
-			&pro.mVal.Siz,
+			&pro.acc, &pro.bal, &pro.mVbal,
+			&pro.mval.siz,
 		}
 		if err = deserialize(flds, rd); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
 		log.Println("Promise - acc,bal,mvbal,mval.siz:",
-			pro.acc, pro.bal, pro.mVBal, pro.mVal.Siz)
-		//mVal.Oct
-		if pro.mVal.Siz != 0 {
-			pro.mVal.Oct = make([]byte, pro.mVal.Siz)
-			if err = binary.Read(rd, binary.LittleEndian, &pro.mVal.Oct); err != nil {
+			pro.acc, pro.bal, pro.mVbal, pro.mval.siz)
+		//mval.oct
+		if pro.mval.siz != 0 {
+			pro.mval.oct = make([]byte, pro.mval.siz)
+			if err = binary.Read(rd, binary.LittleEndian, &pro.mval.oct); err != nil {
 				goto WRONG_MSG_FORMAT
 			}
 		}
@@ -343,14 +346,14 @@ func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
 		acc.hdr = *hdr
 		//bal,val.siz
 		flds := []interface{}{
-			&acc.bal, &acc.val.Siz,
+			&acc.bal, &acc.val.siz,
 		}
 		if err = deserialize(flds, rd); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
-		if acc.val.Siz != 0 {
-			acc.val.Oct = make([]byte, acc.val.Siz)
-			if err = binary.Read(rd, binary.LittleEndian, &acc.val.Oct); err != nil {
+		if acc.val.siz != 0 {
+			acc.val.oct = make([]byte, acc.val.siz)
+			if err = binary.Read(rd, binary.LittleEndian, &acc.val.oct); err != nil {
 				goto WRONG_MSG_FORMAT
 			}
 		}
@@ -360,14 +363,14 @@ func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
 		acd.hdr = *hdr
 		//acd.acc,acd.bal,acd.val.siz
 		flds := []interface{}{
-			&acd.acc, &acd.bal, &acd.val.Siz,
+			&acd.acc, &acd.bal, &acd.val.siz,
 		}
 		if err = deserialize(flds, rd); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
-		if acd.val.Siz != 0 {
-			acd.val.Oct = make([]byte, acd.val.Siz)
-			if err = binary.Read(rd, binary.LittleEndian, &acd.val.Oct); err != nil {
+		if acd.val.siz != 0 {
+			acd.val.oct = make([]byte, acd.val.siz)
+			if err = binary.Read(rd, binary.LittleEndian, &acd.val.oct); err != nil {
 				goto WRONG_MSG_FORMAT
 			}
 		}
@@ -382,9 +385,9 @@ func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
 		msg = cmt
 	case PxsMsgTypeResponse:
 		rsp := new(PxsMsgResponse)
-		rsp.Hdr = *hdr
+		rsp.hdr = *hdr
 		//ret
-		if err = binary.Read(rd, binary.LittleEndian, &rsp.Ret); err != nil {
+		if err = binary.Read(rd, binary.LittleEndian, &rsp.ret); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
 		msg = rsp

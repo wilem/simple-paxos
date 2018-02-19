@@ -10,10 +10,10 @@ func TestWireformat(t *testing.T) {
 	//0.Test value
 	{
 		var val Value
-		val.Siz = 4
+		val.siz = 4
 		oct := []byte{42, 84, 42, 84}
-		val.Oct = oct[0:val.Siz]
-		fld := []interface{}{&val.Siz, &val.Oct}
+		val.oct = oct[0:val.siz]
+		fld := []interface{}{&val.siz, &val.oct}
 		bs0, err := serialize(fld)
 		if err != nil {
 			t.Error("m1 encode:", err)
@@ -23,15 +23,15 @@ func TestWireformat(t *testing.T) {
 		var val2 Value
 		rd := bytes.NewReader(bs0)
 		//siz
-		fld2 := []interface{}{&val2.Siz}
+		fld2 := []interface{}{&val2.siz}
 		err = deserialize(fld2, rd)
 		if err != nil {
 			log.Println("deser - err:", err)
 		}
 		log.Printf("deser - val2:%+v\n", val2)
 		//oct
-		val2.Oct = make([]byte, val2.Siz)
-		fld2 = []interface{}{&val2.Oct}
+		val2.oct = make([]byte, val2.siz)
+		fld2 = []interface{}{&val2.oct}
 		err = deserialize(fld2, rd)
 		if err != nil {
 			log.Println("deser - err:", err)
@@ -78,9 +78,9 @@ func TestWireformat(t *testing.T) {
 	{
 		//3.Promise - P1b msg
 		v := new(Value)
-		v.Siz = 4
-		v.Oct = make([]byte, 4)
-		v.Oct[0] = 42
+		v.siz = 4
+		v.oct = make([]byte, 4)
+		v.oct[0] = 42
 		m1 := NewPxsMsgPromise(1, 1, 101, 100, v)
 		bs1, _ := m1.Encode()
 		log.Println("Promise - bs1:", bs1)
@@ -100,9 +100,9 @@ func TestWireformat(t *testing.T) {
 	{
 		//4.Accept - P2a msg
 		v := new(Value)
-		v.Siz = 4
-		v.Oct = make([]byte, 4)
-		v.Oct = []byte{42, 42, 42, 42}
+		v.siz = 4
+		v.oct = make([]byte, 4)
+		v.oct = []byte{42, 42, 42, 42}
 		m1 := NewPxsMsgAccept(1, 101, v)
 		bs1, _ := m1.Encode()
 		log.Println("Accept - bs1:", bs1)
@@ -122,9 +122,9 @@ func TestWireformat(t *testing.T) {
 	{
 		//5.Accepted - P2b msg
 		v := new(Value)
-		v.Siz = 4
-		v.Oct = make([]byte, 4)
-		v.Oct = []byte{42, 42, 42, 42}
+		v.siz = 4
+		v.oct = make([]byte, 4)
+		v.oct = []byte{42, 42, 42, 42}
 		m1 := NewPxsMsgAccepted(1, 1, 101, v)
 		bs1, _ := m1.Encode()
 		log.Println("Accepted - bs1:", bs1)
