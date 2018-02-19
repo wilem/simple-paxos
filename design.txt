@@ -1,0 +1,53 @@
+
+message type:
+
+client_value
+
+client_request:
+    instance_id uint32
+    value client_value
+
+// phase 1a:
+pxs_req_prepare:
+    instance_id uint32
+    proposal_num uint32 // n
+
+// phase 1b: rsp with a promise or already accepted proposal.
+// acceptor_state: 
+//   promised_proposal_num *uint32
+//   value *client_value
+// if promised_proposal_num = null then { promised_proposal_num = n; ... }
+pxs_rsp_promise:
+    instance_id uint32
+    proposal_num uint32 // n
+ 
+// if promised_proposal_num > n then:
+// this is an optimization
+pxs_rsp_prepare_nack:
+    instance_id uint32
+    proposal_num uint32 // higher-numbered proposal.
+
+// if n > promised_proposal_num then:
+// respond with proposal or null.
+pxs_rsp_prepare_ack:
+    instance_id uint32
+    proposal_num uint32 // highest number (< n) proposal.
+    value client_value
+
+//phase2a
+pxs_req_accept:
+    instance_id uint32
+    proposal_num uint32
+    value client_value // value of highest-numbered proposal among responses.
+
+//phase2b
+pxs_rsp_accepted: // to proposer
+    instance_id uint32
+    proposal_num uint32
+    value client_value // from proposer
+
+//phase2c
+pxs_noti_chosen: // to learners
+    instance_id uint32
+    proposal_num uint32
+    value client_value // from proposer
