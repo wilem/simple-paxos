@@ -394,7 +394,7 @@ func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
 	default:
 		return nil, 0, errors.New("wrong PxsMsgType")
 	}
-	//num of read bytes.
+	//num of read bytes: original_size - bytes_unread.
 	nrd = uint32(rd.Size()) - uint32(rd.Len())
 	return msg, nrd, nil
 WRONG_MSG_FORMAT:

@@ -51,3 +51,8 @@ pxs_noti_chosen: // to learners
     instance_id uint32
     proposal_num uint32
     value client_value // from proposer
+
+//how to select master/leader proposer?
+Once acceptor accepts proposal from one proposer, 
+then this proposer should be the master proposer for a period of time(timeout time TO_1),
+

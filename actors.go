@@ -23,8 +23,8 @@ func GetLeaderID() uint32 {
 	return LeaderID
 }
 
-//Submitt : send value to proposer
-func (c *Client) Submitt(seq uint32, val *Value) (int, error) {
+//Submit : send value to proposer, return errno and error.
+func (c *Client) Submit(seq uint32, val *Value) (int, error) {
 	dst := GetLeaderID()
 	msg := NewPxsMsgRequest(seq, val)
 	oct, err := msg.Encode()

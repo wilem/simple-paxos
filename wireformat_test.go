@@ -7,6 +7,7 @@ import (
 )
 
 func TestWireformat(t *testing.T) {
+	//serialize/deserialize test for all PxsMsg.
 	//0.Test value
 	{
 		var val Value

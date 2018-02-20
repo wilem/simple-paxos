@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -45,13 +44,16 @@ func (n Node) GetID() uint32 {
 
 //NewNodeLoad : generate node from config file
 func NewNodeLoad(cfgFile string) *Node {
+	//new cfg
 	cfg := new(ClusterConfig)
 	err := cfg.LoadFromFile(cfgFile)
 	if err != nil {
 		log.Panic("Load config FAILED:", err)
 		return nil
 	}
+	//new node with cfg
 	node := NewNode(cfg.NodeID)
+	node.cfg = cfg
 	return node
 }
 
@@ -61,6 +63,11 @@ func (n *Node) Start() error {
 	err := n.trans.Start()
 	if err != nil {
 		return err
+	}
+
+	if n.cfg == nil {
+		log.Panicf("empty cfg for node:%+v\n", n)
+		return nil
 	}
 
 	//start proposer
@@ -76,8 +83,25 @@ func (n *Node) Start() error {
 	for _, v := range n.cfg.AcceptorList {
 		if v == n.id {
 			n.acceptor = new(Acceptor)
-			n.proposer.node = n
+			n.acceptor.node = n
+			n.acceptor.Start()
 		}
+	}
+
+	//start learner
+	for _, v := range n.cfg.LearnerList {
+		if v == n.id {
+			n.learner = new(Learner)
+			n.learner.node = n
+			n.learner.Start()
+		}
+	}
+
+	//XXX start client.
+	if n.id == 9 {
+		n.client = new(Client)
+		n.client.node = n
+		n.client.Start()
 	}
 
 	return err
@@ -85,7 +109,8 @@ func (n *Node) Start() error {
 
 //OnRecv : on data recv from transport
 func (n *Node) OnRecv(from uint32, data []byte) {
-	fmt.Printf("[%d]Node.OnRecv - from:%d,data:%s\n", n.id, from, data)
+	log.Printf("[%d]Node.OnRecv - from:%d,data:%+v\n", n.id, from, data)
+
 }
 
 //SendTo : remote node
