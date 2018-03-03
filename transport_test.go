@@ -39,7 +39,7 @@ func TestUDPTranport(t *testing.T) {
 	}
 
 	//wait for server to exit.
-	time.Sleep(time.Second * 2)
+	time.Sleep(time.Second * 1)
 
 	ss1, ok1 := recvStrs[1]
 	ss2, ok2 := recvStrs[2]
@@ -48,6 +48,9 @@ func TestUDPTranport(t *testing.T) {
 	} else {
 		t.Errorf("msg mismatch - recv'ed ss1:%s, ss2:%s\n", ss1, ss2)
 	}
+
+	//clean up
+
 }
 
 var recvStrs map[uint32]string

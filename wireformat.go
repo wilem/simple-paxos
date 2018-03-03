@@ -283,9 +283,11 @@ func (m PxsMsgCommit) Encode() ([]byte, error) {
 	return serialize(data)
 }
 
-//DecodeOnePxsMsg : decode one msg, returns num of read bytes.
-func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
-	rd := bytes.NewReader(bs)
+//DecodeOnePxsMsg : decode one msg, returns num of unread bytes.
+func DecodeOnePxsMsg(buf *bytes.Buffer, bs []byte) (msg interface{}, rem int, err error) {
+	//0. feed buffer
+	buf.Write(bs)          //feed
+	var rd io.Reader = buf //conver buffer to reader.
 	//1. header
 	hdr := new(PxsMsgHeader)
 	flds := []interface{}{
@@ -395,8 +397,8 @@ func DecodeOnePxsMsg(bs []byte) (msg interface{}, nrd uint32, err error) {
 		return nil, 0, errors.New("wrong PxsMsgType")
 	}
 	//num of read bytes: original_size - bytes_unread.
-	nrd = uint32(rd.Size()) - uint32(rd.Len())
-	return msg, nrd, nil
+	rem = buf.Len()
+	return msg, rem, nil
 WRONG_MSG_FORMAT:
 	return nil, 0, err
 }
