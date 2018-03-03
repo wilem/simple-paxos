@@ -68,9 +68,9 @@ func TestWireformat(t *testing.T) {
 		if bs1 == nil || err != nil {
 			t.Error("m1 encode:", err)
 		}
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, hdr, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgRequest)
-		if err != nil || !ok || rem != 0 {
+		if err != nil || !ok || rem != 0 || hdr == nil {
 			t.Error("m2 decode: err,ok,rem,bs1,msg=", err, ok, rem, bs1, msg)
 		}
 		bs2, _ := m2.Encode()
@@ -84,7 +84,7 @@ func TestWireformat(t *testing.T) {
 		//2.Prepare - P1a msg
 		m1 := NewPxsMsgPrepare(101, 101)
 		bs1, _ := m1.Encode()
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, _, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgPrepare)
 		if err != nil || !ok || rem != 0 {
 			t.Error("m2 decode:", err, ok, rem)
@@ -105,7 +105,7 @@ func TestWireformat(t *testing.T) {
 		m1 := NewPxsMsgPromise(1, 1, 101, 100, v)
 		bs1, _ := m1.Encode()
 		log.Println("Promise - bs1:", bs1)
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, _, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgPromise)
 		if err != nil || !ok || rem != 0 {
 			t.Error("m2 decode:", err, ok, rem, bs1)
@@ -127,7 +127,7 @@ func TestWireformat(t *testing.T) {
 		m1 := NewPxsMsgAccept(1, 101, v)
 		bs1, _ := m1.Encode()
 		log.Println("Accept - bs1:", bs1)
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, _, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgAccept)
 		if err != nil || !ok || rem != 0 {
 			t.Error("m2 decode:", err, ok, rem, bs1)
@@ -149,7 +149,7 @@ func TestWireformat(t *testing.T) {
 		m1 := NewPxsMsgAccepted(1, 1, 101, v)
 		bs1, _ := m1.Encode()
 		log.Println("Accepted - bs1:", bs1)
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, _, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgAccepted)
 		if err != nil || !ok || rem != 0 {
 			t.Error("m2 decode:", err, ok, rem, bs1)
@@ -167,7 +167,7 @@ func TestWireformat(t *testing.T) {
 		m1 := NewPxsMsgCommit(1, 101)
 		bs1, _ := m1.Encode()
 		log.Println("Accepted - bs1:", bs1)
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, _, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgCommit)
 		if err != nil || !ok || rem != 0 {
 			t.Error("m2 decode:", err, ok, rem, bs1)
@@ -185,7 +185,7 @@ func TestWireformat(t *testing.T) {
 		m1 := NewPxsMsgResponse(1, 0)
 		bs1, _ := m1.Encode()
 		log.Println("Response - bs1:", bs1)
-		msg, rem, err := DecodeOnePxsMsg(&buffer, bs1)
+		msg, _, rem, err := DecodeOnePxsMsg(&buffer, bs1)
 		m2, ok := msg.(*PxsMsgResponse)
 		if err != nil || !ok || rem != 0 {
 			t.Error("m2 decode:", err, ok, rem, bs1)

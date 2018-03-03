@@ -284,16 +284,17 @@ func (m PxsMsgCommit) Encode() ([]byte, error) {
 }
 
 //DecodeOnePxsMsg : decode one msg, returns num of unread bytes.
-func DecodeOnePxsMsg(buf *bytes.Buffer, bs []byte) (msg interface{}, rem int, err error) {
+func DecodeOnePxsMsg(buf *bytes.Buffer, bs []byte) (msg interface{}, hdr *PxsMsgHeader, rem int, err error) {
 	//0. feed buffer
 	buf.Write(bs)          //feed
 	var rd io.Reader = buf //conver buffer to reader.
 	//1. header
-	hdr := new(PxsMsgHeader)
+	hdr = new(PxsMsgHeader)
 	flds := []interface{}{
 		&hdr.siz, &hdr.typ, &hdr.iid,
 	}
 	if err = deserialize(flds, rd); err != nil {
+		hdr = nil //reset
 		goto WRONG_MSG_FORMAT
 	}
 	//2. parse all type of msg
@@ -394,11 +395,11 @@ func DecodeOnePxsMsg(buf *bytes.Buffer, bs []byte) (msg interface{}, rem int, er
 		}
 		msg = rsp
 	default:
-		return nil, 0, errors.New("wrong PxsMsgType")
+		return nil, nil, 0, errors.New("wrong PxsMsgType")
 	}
 	//num of read bytes: original_size - bytes_unread.
 	rem = buf.Len()
-	return msg, rem, nil
+	return msg, hdr, rem, nil
 WRONG_MSG_FORMAT:
-	return nil, 0, err
+	return nil, hdr, 0, err
 }

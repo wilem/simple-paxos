@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"log"
 )
 
@@ -16,9 +17,10 @@ type INode interface {
 
 //Node :
 type Node struct {
-	id    uint32
-	cfg   *ClusterConfig //proposer,acceptor,learner config
-	trans *UDPTransport  //XXX make it generic.
+	id     uint32
+	cfg    *ClusterConfig           //proposer,acceptor,learner config
+	trans  *UDPTransport            //XXX make it generic.
+	bufMap map[uint32]*bytes.Buffer //incoming peer msg buffers.
 	//node/cluster config
 	peers []uint32 //peers ID
 	//protocol roles:
@@ -34,6 +36,7 @@ func NewNode(id uint32) *Node {
 	n.id = id
 	n.trans = NewUDPTransport(id)
 	n.trans.OnRecv = n.OnRecv
+	n.bufMap = make(map[uint32]*bytes.Buffer)
 	return n
 }
 
@@ -54,6 +57,10 @@ func NewNodeLoad(cfgFile string) *Node {
 	//new node with cfg
 	node := NewNode(cfg.NodeID)
 	node.cfg = cfg
+	//peer list: init buffer.
+	for _, id := range node.cfg.ServerList {
+		node.bufMap[id] = new(bytes.Buffer)
+	}
 	return node
 }
 
@@ -97,7 +104,7 @@ func (n *Node) Start() error {
 		}
 	}
 
-	//XXX start client.
+	//TODO start client.
 	if n.id == 9 {
 		n.client = new(Client)
 		n.client.node = n
@@ -110,7 +117,31 @@ func (n *Node) Start() error {
 //OnRecv : on data recv from transport
 func (n *Node) OnRecv(from uint32, data []byte) {
 	log.Printf("[%d]Node.OnRecv - from:%d,data:%+v\n", n.id, from, data)
+	buf, ok := n.bufMap[from]
+	if !ok {
+		log.Println("DROPED.")
+	}
+	//decode one msg once.
+	msg, hdr, rem, err := DecodeOnePxsMsg(buf, data)
+	if msg == nil || hdr == nil || err != nil {
+		log.Printf("Decode failed - from:%d, data:%+v, err:%s, buffer reset.\n", from, data, err)
+		buf.Reset()
+		return
+	}
+	//handle incoming msg
+	switch hdr.typ {
+	case PxsMsgTypeRequest: //PxsMsgType = 0x0a //0a msg: pro -> cli
+	case PxsMsgTypePrepare: //PxsMsgType = 0x1a //1a msg: pro -> acc
+	case PxsMsgTypePromise: //PxsMsgType = 0x1b //1b msg: acc -> pro
+	case PxsMsgTypeAccept: //PxsMsgType = 0x2a //2a msg: pro -> acc
+	case PxsMsgTypeAccepted: //PxsMsgType = 0x2b //2b msg: acc -> pro
+	case PxsMsgTypeCommit: //PxsMsgType = 0x3a //3a msg: pro -> acc
+	case PxsMsgTypeResponse: //PxsMsgType = 0x0b //0b msg: pro -> cli
+	}
 
+	if rem != 0 {
+		log.Printf("Decode rem:%d, expect more.\n", rem)
+	}
 }
 
 //SendTo : remote node
