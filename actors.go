@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 //Actor : Client/Proposer/Acceptor/Learner
 type Actor interface {
 	getID() uint32
@@ -34,6 +36,13 @@ func (c *Client) Submit(seq uint32, val *Value) (int, error) {
 	return c.node.SendTo(dst, oct)
 }
 
+//OnRecvResponse : on recv
+func (c *Client) OnRecvResponse(rsp *PxsMsgResponse, from uint32) (ret int) {
+	log.Printf("[%d]Client.OnRecvResponse - rsp:%+v, from:%d, ret:%d\n",
+		c.node.id, rsp, from, rsp.ret)
+	return 0
+}
+
 //Proposer :
 type Proposer struct {
 	node *Node
@@ -42,6 +51,14 @@ type Proposer struct {
 //Start :
 func (p *Proposer) Start() error {
 	return nil
+}
+
+//OnRecvRequest : client requests.
+func (p *Proposer) OnRecvRequest(req *PxsMsgRequest, from uint32) (ret int) {
+	log.Printf("[%d]Proposer.OnRecvRequest - req:%+v, from:%d\n", p.node.id, req, from)
+	//check cluster status and return error code.
+	ret = int(PxsStatusClusterUnavailable)
+	return
 }
 
 //Acceptor :

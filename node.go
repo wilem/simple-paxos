@@ -5,6 +5,16 @@ import (
 	"log"
 )
 
+//PxsStatus : status
+type PxsStatus int
+
+const (
+	//StatusOK : OK
+	PxsStatusOK PxsStatus = 0
+	//ClusterUnavailable : Cluster is unavailable.
+	PxsStatusClusterUnavailable PxsStatus = 1
+)
+
 //INode communication.
 type INode interface {
 	GetID() uint32
@@ -119,24 +129,40 @@ func (n *Node) OnRecv(from uint32, data []byte) {
 	log.Printf("[%d]Node.OnRecv - from:%d,data:%+v\n", n.id, from, data)
 	buf, ok := n.bufMap[from]
 	if !ok {
-		log.Println("DROPED.")
+		//log.Println("DROPED.")
+		n.bufMap[from] = new(bytes.Buffer)
+		buf = n.bufMap[from]
 	}
 	//decode one msg once.
 	msg, hdr, rem, err := DecodeOnePxsMsg(buf, data)
 	if msg == nil || hdr == nil || err != nil {
-		log.Printf("Decode failed - from:%d, data:%+v, err:%s, buffer reset.\n", from, data, err)
+		log.Printf("[%d]Decode failed - from:%d, data:%+v, err:%s, buffer reset.\n", n.id, from, data, err)
 		buf.Reset()
 		return
 	}
 	//handle incoming msg
 	switch hdr.typ {
 	case PxsMsgTypeRequest: //PxsMsgType = 0x0a //0a msg: pro -> cli
+		if n.proposer != nil {
+			req := msg.(*PxsMsgRequest)
+			sts := n.proposer.OnRecvRequest(req, from)
+			if sts != 0 { // reply early
+				rsp := NewPxsMsgResponse(req.hdr.iid, uint32(sts))
+				bs, _ := rsp.Encode()
+				n.SendTo(from, bs)
+			}
+		}
 	case PxsMsgTypePrepare: //PxsMsgType = 0x1a //1a msg: pro -> acc
 	case PxsMsgTypePromise: //PxsMsgType = 0x1b //1b msg: acc -> pro
 	case PxsMsgTypeAccept: //PxsMsgType = 0x2a //2a msg: pro -> acc
 	case PxsMsgTypeAccepted: //PxsMsgType = 0x2b //2b msg: acc -> pro
 	case PxsMsgTypeCommit: //PxsMsgType = 0x3a //3a msg: pro -> acc
 	case PxsMsgTypeResponse: //PxsMsgType = 0x0b //0b msg: pro -> cli
+		if n.client != nil {
+			rsp := msg.(*PxsMsgResponse)
+			sts := n.client.OnRecvResponse(rsp, from)
+			log.Printf("client.OnRecvResponse - ret:%d\n", sts)
+		}
 	}
 
 	if rem != 0 {

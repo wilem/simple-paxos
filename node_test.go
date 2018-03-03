@@ -27,20 +27,20 @@ func TestNode(t *testing.T) {
 		t.Errorf("n2.SendTo:%s\n", err)
 	}
 
-	//client
+	//client send multiple values.
 	var seq uint32
 	var val Value
 	for {
 		seq++
 		val.siz = 4
 		val.oct = make([]byte, 4)
-		val.oct[0]++
+		val.oct[0] = byte(seq % 255)
 		ret, err := n9.client.Submit(seq, &val)
 		if err != nil {
 			log.Println("Submit failed - ret,err =", ret, err)
 		}
 		time.Sleep(time.Second)
-		if seq == 20 {
+		if seq == 10 {
 			break
 		}
 	}
