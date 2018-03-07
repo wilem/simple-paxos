@@ -9,9 +9,9 @@ import (
 
 //ITransport - interface of tranport class
 type ITransport interface {
-	Start() (error)
-	Stop() (error)
-	SendTo(int,[]byte) (int,error)
+	Start() error
+	Stop() error
+	SendTo(int, []byte) (int, error)
 }
 
 // OnRecvCallback is a callback type for user to register with.
@@ -19,12 +19,12 @@ type OnRecvCallback func(uint32, []byte)
 
 // UDPTransport encapsulate UDP transport
 type UDPTransport struct {
-	id 			  uint32
+	id            uint32
 	clientConnMap map[uint32]*net.UDPConn //remoteID -> client connection.
-	OnRecv 		  OnRecvCallback
+	OnRecv        OnRecvCallback
 }
 
-//NewUDPTransport - 
+//NewUDPTransport -
 func NewUDPTransport(id uint32) *UDPTransport {
 	u := new(UDPTransport)
 	u.id = id
@@ -44,7 +44,7 @@ func (t UDPTransport) getServerAddress(serverID uint32) string {
 }
 
 //RecvBufSize : recv buffer size used in server recv loop.
-const RecvBufSize int = 1024*4
+const RecvBufSize int = 1024 * 4
 
 //Start : start a UDP server loop
 func (t UDPTransport) Start() error {
@@ -52,21 +52,23 @@ func (t UDPTransport) Start() error {
 	addr := t.getServerAddress(t.id)
 	fmt.Println("UDP server listen on:", addr)
 	laddr, err := net.ResolveUDPAddr("udp", addr)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	conn, err := net.ListenUDP("udp", laddr)
 	if err != nil {
 		log.Fatal(err)
 		return err
 	}
 	//defer conn.Close() //can not close here!XXX
-	
+
 	buffer := make([]byte, RecvBufSize)
 	go func() {
 		for {
 			n, raddr, err := conn.ReadFromUDP(buffer)
 			if err != nil {
 				fmt.Println("UDP server read:", buffer[:n],
-					 "from ", addr, "err:", err)
+					"from ", addr, "err:", err)
 				time.Sleep(time.Second)
 				continue
 			}
@@ -75,8 +77,11 @@ func (t UDPTransport) Start() error {
 				log.Printf("[%d]Wrong package received - dst:%d\n", t.id, dst)
 				continue
 			}
+
 			if t.OnRecv != nil {
 				t.OnRecv(src, buffer[:n])
+			} else {
+				log.Printf("[%d]t.OnRecv: - buffer:%d\n", t.id, buffer[:n])
 			}
 		}
 	}()
@@ -101,7 +106,7 @@ func (t UDPTransport) SendTo(to uint32, data []byte) (int, error) {
 		fmt.Printf("new client conn: %+v\n", *conn)
 		t.clientConnMap[to] = conn
 	}
-	
+
 	return conn.Write(data)
 }
 
@@ -113,13 +118,19 @@ func (t *UDPTransport) Stop() error {
 
 func newClientConn(localAddr, remoteAddr string) (*net.UDPConn, error) {
 	laddr, err := net.ResolveUDPAddr("udp", localAddr)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	raddr, err := net.ResolveUDPAddr("udp", remoteAddr)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	conn, err := net.DialUDP("udp", laddr, raddr)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 
 	return conn, nil
 }
@@ -134,7 +145,7 @@ func ids2addr(src, dst uint32) string {
 const LocalIPAddr = "127.0.0.1"
 
 func newUDPAddr(src, dst uint32) *net.UDPAddr {
-	addr := net.UDPAddr {
+	addr := net.UDPAddr{
 		Port: int(50000 + src*100 + dst),
 		IP:   net.ParseIP(LocalIPAddr),
 	}
@@ -142,6 +153,6 @@ func newUDPAddr(src, dst uint32) *net.UDPAddr {
 }
 
 func port2ids(port uint32) (src, dst uint32) {
-	src, dst = (port - 50000)/100, port%100
+	src, dst = (port-50000)/100, port%100
 	return
 }

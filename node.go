@@ -9,10 +9,14 @@ import (
 type PxsStatus int
 
 const (
-	//StatusOK : OK
+	//PxsStatusOK : OK
 	PxsStatusOK PxsStatus = 0
-	//ClusterUnavailable : Cluster is unavailable.
+	//PxsStatusClusterUnavailable : Cluster is unavailable;
 	PxsStatusClusterUnavailable PxsStatus = 1
+	//PxsStatusNotProposerLeader : current proposer is not leader;
+	PxsStatusNotProposerLeader PxsStatus = 2
+	//PxsStatusNetworkIOFailure :
+	PxsStatusNetworkIOFailure PxsStatus = 3
 )
 
 //INode communication.
@@ -32,12 +36,16 @@ type Node struct {
 	trans  *UDPTransport            //XXX make it generic.
 	bufMap map[uint32]*bytes.Buffer //incoming peer msg buffers.
 	//node/cluster config
-	peers []uint32 //peers ID
+	peers  []uint32 //peers ID
+	quorum uint32   //min number of acceptor to chose a proposal
 	//protocol roles:
 	client   *Client
 	proposer *Proposer
 	acceptor *Acceptor
 	learner  *Learner
+	//persistent states
+	instanceID uint32 //globally auto incremental instance ID
+	leaderID   uint32 //leader proposer ID
 }
 
 //NewNode : ctor of Node
@@ -47,6 +55,8 @@ func NewNode(id uint32) *Node {
 	n.trans = NewUDPTransport(id)
 	n.trans.OnRecv = n.OnRecv
 	n.bufMap = make(map[uint32]*bytes.Buffer)
+	//TODO recover from stable storage
+	n.instanceID = 1
 	return n
 }
 
@@ -71,6 +81,9 @@ func NewNodeLoad(cfgFile string) *Node {
 	for _, id := range node.cfg.ServerList {
 		node.bufMap[id] = new(bytes.Buffer)
 	}
+	//TODO to be chose by leader election proposal
+	node.leaderID = 0 //leader is not selected
+	node.quorum = uint32(len(node.cfg.AcceptorList)/2 + 1)
 	return node
 }
 
@@ -90,8 +103,7 @@ func (n *Node) Start() error {
 	//start proposer
 	for _, v := range n.cfg.ProposerList {
 		if v == n.id {
-			n.proposer = new(Proposer)
-			n.proposer.node = n
+			n.proposer = NewProposer(n)
 			n.proposer.Start()
 		}
 	}
@@ -99,8 +111,7 @@ func (n *Node) Start() error {
 	//start acceptor
 	for _, v := range n.cfg.AcceptorList {
 		if v == n.id {
-			n.acceptor = new(Acceptor)
-			n.acceptor.node = n
+			n.acceptor = NewAcceptor(n)
 			n.acceptor.Start()
 		}
 	}
@@ -126,7 +137,7 @@ func (n *Node) Start() error {
 
 //OnRecv : on data recv from transport
 func (n *Node) OnRecv(from uint32, data []byte) {
-	log.Printf("[%d]Node.OnRecv - from:%d,data:%+v\n", n.id, from, data)
+	//log.Printf("[%d]Node.OnRecv - from:%d,data:%+v\n", n.id, from, data)
 	buf, ok := n.bufMap[from]
 	if !ok {
 		//log.Println("DROPED.")
@@ -153,10 +164,30 @@ func (n *Node) OnRecv(from uint32, data []byte) {
 			}
 		}
 	case PxsMsgTypePrepare: //PxsMsgType = 0x1a //1a msg: pro -> acc
+		if n.acceptor != nil {
+			prp := msg.(*PxsMsgPrepare)
+			n.acceptor.OnRecvPrepare(prp, from)
+		}
 	case PxsMsgTypePromise: //PxsMsgType = 0x1b //1b msg: acc -> pro
+		if n.proposer != nil {
+			pro := msg.(*PxsMsgPromise)
+			n.proposer.OnRecvPromise(pro, from)
+		}
 	case PxsMsgTypeAccept: //PxsMsgType = 0x2a //2a msg: pro -> acc
+		if n.acceptor != nil {
+			acc := msg.(*PxsMsgAccept)
+			n.acceptor.OnRecvAccept(acc, from)
+		}
 	case PxsMsgTypeAccepted: //PxsMsgType = 0x2b //2b msg: acc -> pro
+		if n.proposer != nil {
+			acd := msg.(*PxsMsgAccepted)
+			n.proposer.OnRecvAccepted(acd, from)
+		}
 	case PxsMsgTypeCommit: //PxsMsgType = 0x3a //3a msg: pro -> acc
+		if n.acceptor != nil {
+			cmt := msg.(*PxsMsgCommit)
+			n.acceptor.OnRecvCommit(cmt, from)
+		}
 	case PxsMsgTypeResponse: //PxsMsgType = 0x0b //0b msg: pro -> cli
 		if n.client != nil {
 			rsp := msg.(*PxsMsgResponse)
