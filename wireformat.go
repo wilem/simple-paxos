@@ -334,8 +334,8 @@ func DecodeOnePxsMsg(buf *bytes.Buffer, bs []byte) (msg interface{}, hdr *PxsMsg
 		if err = deserialize(flds, rd); err != nil {
 			goto WRONG_MSG_FORMAT
 		}
-		log.Println("Promise - acc,bal,mvbal,mval.siz:",
-			pro.acc, pro.bal, pro.mVbal, pro.mval.siz)
+		//log.Println("Promise - acc,bal,mvbal,mval.siz:",
+		//	pro.acc, pro.bal, pro.mVbal, pro.mval.siz)
 		//mval.oct
 		if pro.mval.siz != 0 {
 			pro.mval.oct = make([]byte, pro.mval.siz)

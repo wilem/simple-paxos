@@ -53,11 +53,12 @@ func (t UDPTransport) Start() error {
 	fmt.Println("UDP server listen on:", addr)
 	laddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
+		log.Fatalf("net.ResolveUDPAddr - err:%s, addr:%+v\n", err, addr)
 		return err
 	}
 	conn, err := net.ListenUDP("udp", laddr)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("net.ListenUDP - err:%s, laddr:%+v\n", err, laddr)
 		return err
 	}
 	//defer conn.Close() //can not close here!XXX

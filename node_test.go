@@ -39,7 +39,7 @@ func TestNode(t *testing.T) {
 	//client send multiple values.
 	var seq uint32
 	var val Value
-	const rnd = 2
+	const rnd = 10
 	for {
 		seq++
 		val.siz = 4

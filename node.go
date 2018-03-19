@@ -92,6 +92,7 @@ func (n *Node) Start() error {
 	//start transport
 	err := n.trans.Start()
 	if err != nil {
+		log.Panicf("node %d is fail to start transport, cfg:%+v, err:%s\n", n.id, n.cfg, err)
 		return err
 	}
 
